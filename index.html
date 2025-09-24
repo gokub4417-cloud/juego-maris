@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Juego de 20 Preguntas</title>
   <style>
-    /* Fondo morado oscuro como pediste */
     body {
       font-family: Arial, sans-serif;
       background: linear-gradient(135deg, #6a11cb, #2575fc);
@@ -19,7 +18,6 @@
     h1 { font-size: 36px; margin: 6px 0 12px; }
     h2 { font-size: 20px; margin: 4px 0 18px; }
 
-    /* Tablero 1..20 */
     #tablero {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -29,12 +27,12 @@
     }
     .num-btn {
       padding: 18px;
-      font-size: 22px;               /* letras más grandes */
+      font-size: 22px;
       font-weight: 700;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      background: #3b0f70;          /* botón morado oscuro */
+      background: #3b0f70;
       color: #fff;
       box-shadow: 0 4px 8px rgba(0,0,0,0.25);
       transition: transform .12s, filter .12s;
@@ -47,25 +45,14 @@
       opacity: 0.8;
     }
 
-    /* Pregunta y opciones */
-    #pregunta {
-      margin-top: 28px;
-      font-size: 26px;             /* letra más grande */
-      font-weight: 700;
-      min-height: 62px;
-    }
-    #opciones {
-      margin-top: 18px;
-      display: grid;
-      gap: 14px;
-      justify-items: center;
-    }
+    #pregunta { margin-top: 28px; font-size: 26px; font-weight: 700; min-height: 62px; }
+    #opciones { margin-top: 18px; display: grid; gap: 14px; justify-items: center; }
 
     .opcion {
       width: 78%;
       max-width: 600px;
       padding: 14px 18px;
-      font-size: 20px;            /* letra más grande */
+      font-size: 20px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
@@ -77,32 +64,29 @@
     }
     .opcion:hover { transform: translateY(-3px); }
 
-    /* Contadores y mensajes */
     #contador { font-size: 24px; color: #fff200; margin-top: 18px; font-weight:700; }
     #puntos { font-size: 22px; font-weight: 800; color: #ffffff; }
     #mensaje { font-size: 26px; margin-top: 14px; font-weight: 800; }
 
-    /* Robotito (victoria) */
-    #robot {
+    /* Robotitos */
+    #robot, #robot-triste {
       display: none;
       margin: 20px auto 6px;
-      width: 220px;
+      width: 240px;
       text-align: center;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.08);
       padding: 12px;
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.35);
     }
-    #robot img { width: 120px; display:block; margin: 0 auto 8px; animation: bounce .9s infinite; }
+    #robot img, #robot-triste img {
+      width: 120px;
+      display:block;
+      margin: 0 auto 8px;
+      animation: bounce .9s infinite;
+    }
     @keyframes bounce {
       0%,100%{transform: translateY(0)} 50%{transform: translateY(-12px)}
-    }
-
-    /* Responsive */
-    @media (max-width:600px){
-      .num-btn { font-size:18px; padding:14px; }
-      .opcion { width: 90%; font-size:18px; }
-      #pregunta { font-size:20px; }
     }
   </style>
 </head>
@@ -118,20 +102,28 @@
   <div id="contador"></div>
   <div id="mensaje"></div>
 
+  <!-- Robot feliz -->
   <div id="robot">
-    <img src="mari2.png" alt="Robotito">
+    <img src="mari2.png" alt="Robotito feliz">
     <div style="font-weight:800; font-size:18px; color:#fff">🤖 ¡Ganaste, felicidades! 🎉</div>
   </div>
 
-  <!-- Sonidos (externos) -->
+  <!-- Robot triste -->
+  <div id="robot-triste">
+    <img src="mari-triste.png" alt="Robotito triste">
+    <div style="font-weight:800; font-size:18px; color:#fff">😔 Lo intentaste... pero no llegaste a 100</div>
+  </div>
+
+  <!-- Sonidos -->
   <audio id="sonido-correcto" src="Efecto de sonido respuesta correcta.mp3" preload="auto"></audio>
-  <audio id="sonido-incorrecto" src="Efecto de sonido respuesta incorrecta.mp3" preload="auto"></audio>
+  <audio id="sonido-incorrecto" src="Efecto sonido de fallo ( Sonido fail ).mp3" preload="auto"></audio>
   <audio id="sonido-tic" src="Simple 10 second countdown 4K with beep.mp3" preload="auto"></audio>
-  <audio id="sonido-fracaso" src="Efecto de sonido fracaso.mp3" preload="auto"></audio>
+  <audio id="sonido-fracaso" src="Efecto sonido de fallo ( Sonido fail ).mp3" preload="auto"></audio>
   <audio id="sonido-victoria" src="Efecto de sonido victoria.mp3" preload="auto"></audio>
+  <audio id="sonido-intento" src="lastima.mp3" preload="auto"></audio>
 
   <script>
-    /* --- Banco de 20 preguntas (cada una con 4 opciones) --- */
+    /* Preguntas (igual que tenías antes, 20 preguntas con 4 opciones) */
     const preguntasOrigen = [
       {p:"¿Cuál es tu nombre?", o:["Alexa","Maris","Siri","Cortana"], c:"Maris"},
       {p:"¿Qué es la informática?", o:["Un deporte","La ciencia que estudia sistemas computacionales","Un aparato electrónico","Una rama de medicina"], c:"La ciencia que estudia sistemas computacionales"},
@@ -155,15 +147,11 @@
       {p:"¿Qué es una red?", o:["Un conjunto de dispositivos interconectados que comparten recursos","Una aplicación móvil","Un compilador","Un software de edición"], c:"Un conjunto de dispositivos interconectados que comparten recursos"}
     ];
 
-    /* --- Estado del juego --- */
     let puntos = 0;
-    let preguntasRestantes = [...preguntasOrigen]; // banco rotativo
-    let timer = null;
-    let tiempo = 10;
-    let preguntaActiva = null;
-    let botonActivo = null;
+    let preguntasRestantes = [...preguntasOrigen];
+    let timer = null, tiempo = 10;
+    let preguntaActiva = null, botonActivo = null;
 
-    /* --- Elementos DOM --- */
     const tablero = document.getElementById('tablero');
     const preguntaDiv = document.getElementById('pregunta');
     const opcionesDiv = document.getElementById('opciones');
@@ -171,14 +159,16 @@
     const puntosSpan = document.getElementById('puntos');
     const mensajeDiv = document.getElementById('mensaje');
     const robotDiv = document.getElementById('robot');
+    const robotTriste = document.getElementById('robot-triste');
 
     const sonidoCorrecto = document.getElementById('sonido-correcto');
     const sonidoIncorrecto = document.getElementById('sonido-incorrecto');
     const sonidoTic = document.getElementById('sonido-tic');
     const sonidoFracaso = document.getElementById('sonido-fracaso');
     const sonidoVictoria = document.getElementById('sonido-victoria');
+    const sonidoIntento = document.getElementById('sonido-intento');
 
-    /* --- Crear botones 1..20 --- */
+    // Crear tablero
     for (let i = 1; i <= 20; i++) {
       const btn = document.createElement('button');
       btn.className = 'num-btn';
@@ -188,19 +178,12 @@
       tablero.appendChild(btn);
     }
 
-    /* --- Elegir y mostrar pregunta aleatoria (rotativa) --- */
     function elegirPregunta(boton) {
-      // Si no hay preguntas disponibles, recargar banco
       if (preguntasRestantes.length === 0) preguntasRestantes = [...preguntasOrigen];
-
-      // Selección aleatoria y remoción para evitar repetir en la misma partida
       const idx = Math.floor(Math.random() * preguntasRestantes.length);
       const pregunta = preguntasRestantes.splice(idx, 1)[0];
+      preguntaActiva = pregunta; botonActivo = boton;
 
-      preguntaActiva = pregunta;
-      botonActivo = boton;
-
-      // Mostrar pregunta y opciones (4 opciones)
       preguntaDiv.textContent = pregunta.p;
       opcionesDiv.innerHTML = '';
       pregunta.o.forEach(op => {
@@ -210,148 +193,77 @@
         b.onclick = () => verificarRespuesta(op, pregunta.c, boton);
         opcionesDiv.appendChild(b);
       });
-
-      // Iniciar contador
       iniciarConteo();
     }
 
-    /* --- Contador de 10 segundos con sonido tic que se detiene cuando respondes --- */
     function iniciarConteo() {
-      detenerConteo(); // seguridad
+      detenerConteo();
       tiempo = 10;
       contadorDiv.textContent = `⏳ Tiempo: ${tiempo}s`;
-
-      // reproducir tic en loop
       sonidoTic.loop = true;
-      // Chrome requiere interacción previa (ya hubo clic en boton), así que debería reproducir
-      sonidoTic.play().catch(()=>{/* si no reproduce, ignorar */});
-
+      sonidoTic.play().catch(()=>{});
       timer = setInterval(() => {
         tiempo--;
         contadorDiv.textContent = `⏳ Tiempo: ${tiempo}s`;
-
-        if (tiempo <= 0) {
-          detenerConteo();
-          // sonido de fracaso + reinicio
-          fracasar("⏰ ¡Se acabó el tiempo!");
-        }
+        if (tiempo <= 0) { detenerConteo(); fracasar("⏰ ¡Se acabó el tiempo!"); }
       }, 1000);
     }
 
     function detenerConteo() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-      try {
-        sonidoTic.pause();
-        sonidoTic.currentTime = 0;
-      } catch(e){}
+      if (timer) clearInterval(timer);
+      timer = null;
+      try { sonidoTic.pause(); sonidoTic.currentTime = 0; } catch(e){}
       contadorDiv.textContent = '';
     }
 
-    /* --- Verificar la respuesta seleccionada --- */
     function verificarRespuesta(opcion, correcta, boton) {
-      // detener tic y contador
       detenerConteo();
-
       if (opcion === correcta) {
-        // respuesta correcta
         puntos += 10;
         puntosSpan.textContent = puntos;
         mensajeDiv.textContent = "✅ ¡Correcto!";
         sonidoCorrecto.play().catch(()=>{});
-        // apagar el botón que elegiste
-        boton.classList.add('apagado');
-        boton.disabled = true;
-
-        // ganar?
-        if (puntos >= 100) {
-          // victoria: robot, sonido y voz
-          setTimeout(winGame, 600); // pequeña pausa para UX
-        }
+        boton.classList.add('apagado'); boton.disabled = true;
+        if (puntos >= 100) setTimeout(winGame, 600);
       } else {
-        // respuesta incorrecta -> fracaso
-        fracasar("❌ Incorrecto. Has fracasado.");
+        mensajeDiv.textContent = "❌ Incorrecto";
+        sonidoIncorrecto.play().catch(()=>{});
+        setTimeout(()=>fracasar("❌ Has fallado."), 5500);
       }
     }
 
-    /* --- Fracaso: sonido, mensaje y reinicio (completo) --- */
     function fracasar(texto) {
       mensajeDiv.textContent = texto;
-      try { sonidoFracaso.play(); } catch(e){}
-      // dejar mensaje un momento y reiniciar todo
-      setTimeout(() => reiniciarJuego("💀 ¡Fracasaste! Reiniciando..."), 1300);
+      if (puntos >= 50 && puntos < 100) {
+        robotTriste.style.display = 'block';
+        sonidoIntento.play().catch(()=>{});
+      } else {
+        sonidoFracaso.play().catch(()=>{});
+      }
+      setTimeout(() => reiniciarJuego("💀 Reiniciando..."), 3800);
     }
 
-    /* --- Victoria: mostrar robot, reproducir aplauso y hablar "¡Ganaste!" --- */
     function winGame() {
-      detenerConteo();
       mensajeDiv.textContent = "🎉 ¡Ganaste!";
       robotDiv.style.display = 'block';
-
-      // sonido de victoria (aplausos)
-      try { sonidoVictoria.play(); } catch(e){}
-
-      // voz usando Web Speech API (navegador)
+      sonidoVictoria.play().catch(()=>{});
       if ('speechSynthesis' in window) {
         const utter = new SpeechSynthesisUtterance("¡Ganaste, felicidades!");
-        utter.lang = 'es-ES';
-        utter.rate = 1;
-        utter.pitch = 1;
-        window.speechSynthesis.cancel(); // cancelar cualquier voz previa
-        window.speechSynthesis.speak(utter);
+        utter.lang = 'es-ES'; window.speechSynthesis.speak(utter);
       }
-
-      // deshabilitar todos los botones del tablero (estado final)
       document.querySelectorAll('#tablero .num-btn').forEach(b => b.disabled = true);
-      // también limpiar opciones (ya no se puede responder)
       opcionesDiv.innerHTML = '';
     }
 
-    /* --- Reiniciar juego: volver a estado inicial --- */
-    function reiniciarJuego(alertText = "") {
-      // detener cualquier audio/voz
-      detenerConteo();
-      try { sonidoCorrecto.pause(); sonidoCorrecto.currentTime = 0; } catch(e){}
-      try { sonidoIncorrecto.pause(); sonidoIncorrecto.currentTime = 0; } catch(e){}
-      try { sonidoFracaso.pause(); sonidoFracaso.currentTime = 0; } catch(e){}
-      try { sonidoVictoria.pause(); sonidoVictoria.currentTime = 0; } catch(e){}
-      try { window.speechSynthesis.cancel(); } catch(e){}
-
-      if (alertText) {
-        // Muestra un alert y sigue con reinicio
-        alert(alertText);
-      }
-
-      puntos = 0;
-      puntosSpan.textContent = puntos;
-      preguntasRestantes = [...preguntasOrigen]; // recargar banco
-      preguntaDiv.textContent = '';
-      opcionesDiv.innerHTML = '';
-      contadorDiv.textContent = '';
-      mensajeDiv.textContent = '';
-      robotDiv.style.display = 'none';
-
-      // reactivar botones y quitar clase apagado
-      document.querySelectorAll('#tablero .num-btn').forEach(b => {
-        b.disabled = false;
-        b.classList.remove('apagado');
-      });
+    function reiniciarJuego(alertText="") {
+      detenerConteo(); window.speechSynthesis.cancel();
+      puntos = 0; puntosSpan.textContent = puntos;
+      preguntasRestantes = [...preguntasOrigen];
+      preguntaDiv.textContent = ''; opcionesDiv.innerHTML = '';
+      contadorDiv.textContent = ''; mensajeDiv.textContent = '';
+      robotDiv.style.display = 'none'; robotTriste.style.display = 'none';
+      document.querySelectorAll('#tablero .num-btn').forEach(b => { b.disabled = false; b.classList.remove('apagado'); });
     }
-
-    /* --- (Opcional) prevenir doble click rápido --- */
-    // no es estrictamente necesario pero evita problemas si pulsas varias veces
-    document.addEventListener('click', e => {
-      if (e.target && e.target.classList.contains('opcion')) {
-        // opcional: desactivar temporalmente las opciones (evita doble-click)
-        document.querySelectorAll('.opcion').forEach(x => x.disabled = true);
-        setTimeout(()=>document.querySelectorAll('.opcion').forEach(x => x.disabled = false), 600);
-      }
-    });
-
-    /* --- Inicialización: (ya creado tablero más arriba) --- */
-    // ya todo se arma dinámicamente en creación de botones
   </script>
 </body>
 </html>
