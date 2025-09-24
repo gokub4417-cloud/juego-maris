@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Juego de 20 Preguntas</title>
+  <style>
+    /* Fondo morado oscuro como pediste */
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      color: #fff;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      text-align: center;
+    }
+
+    h1 { font-size: 36px; margin: 6px 0 12px; }
+    h2 { font-size: 20px; margin: 4px 0 18px; }
+
+    /* Tablero 1..20 */
+    #tablero {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .num-btn {
+      padding: 18px;
+      font-size: 22px;               /* letras más grandes */
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #3b0f70;          /* botón morado oscuro */
+      color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+      transition: transform .12s, filter .12s;
+    }
+    .num-btn:hover { transform: translateY(-4px); filter: brightness(1.05); }
+    .num-btn.apagado {
+      background: #231232 !important;
+      color: #7f7f9a !important;
+      cursor: default;
+      opacity: 0.8;
+    }
+
+    /* Pregunta y opciones */
+    #pregunta {
+      margin-top: 28px;
+      font-size: 26px;             /* letra más grande */
+      font-weight: 700;
+      min-height: 62px;
+    }
+    #opciones {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+      justify-items: center;
+    }
+
+    .opcion {
+      width: 78%;
+      max-width: 600px;
+      padding: 14px 18px;
+      font-size: 20px;            /* letra más grande */
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(90deg,#ffb74d,#ff9800);
+      color: #0b0b0b;
+      font-weight: 700;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+      transition: transform .09s;
+    }
+    .opcion:hover { transform: translateY(-3px); }
+
+    /* Contadores y mensajes */
+    #contador { font-size: 24px; color: #fff200; margin-top: 18px; font-weight:700; }
+    #puntos { font-size: 22px; font-weight: 800; color: #ffffff; }
+    #mensaje { font-size: 26px; margin-top: 14px; font-weight: 800; }
+
+    /* Robotito (victoria) */
+    #robot {
+      display: none;
+      margin: 20px auto 6px;
+      width: 220px;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    }
+    #robot img { width: 120px; display:block; margin: 0 auto 8px; animation: bounce .9s infinite; }
+    @keyframes bounce {
+      0%,100%{transform: translateY(0)} 50%{transform: translateY(-12px)}
+    }
+
+    /* Responsive */
+    @media (max-width:600px){
+      .num-btn { font-size:18px; padding:14px; }
+      .opcion { width: 90%; font-size:18px; }
+      #pregunta { font-size:20px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Juego de 20 Preguntas</h1>
+  <h2>Puntuación: <span id="puntos">0</span>/100</h2>
+
+  <div id="tablero"></div>
+
+  <div id="pregunta"></div>
+  <div id="opciones"></div>
+
+  <div id="contador"></div>
+  <div id="mensaje"></div>
+
+  <div id="robot">
+    <img src="mari2.png" alt="Robotito">
+    <div style="font-weight:800; font-size:18px; color:#fff">🤖 ¡Ganaste, felicidades! 🎉</div>
+  </div>
+
+  <!-- Sonidos (externos) -->
+  <audio id="sonido-correcto" src="Efecto de sonido respuesta correcta.mp3" preload="auto"></audio>
+  <audio id="sonido-incorrecto" src="Efecto de sonido respuesta incorrecta.mp3" preload="auto"></audio>
+  <audio id="sonido-tic" src="Simple 10 second countdown 4K with beep.mp3" preload="auto"></audio>
+  <audio id="sonido-fracaso" src="Efecto de sonido fracaso.mp3" preload="auto"></audio>
+  <audio id="sonido-victoria" src="Efecto de sonido victoria.mp3" preload="auto"></audio>
+
+  <script>
+    /* --- Banco de 20 preguntas (cada una con 4 opciones) --- */
+    const preguntasOrigen = [
+      {p:"¿Cuál es tu nombre?", o:["Alexa","Maris","Siri","Cortana"], c:"Maris"},
+      {p:"¿Qué es la informática?", o:["Un deporte","La ciencia que estudia sistemas computacionales","Un aparato electrónico","Una rama de medicina"], c:"La ciencia que estudia sistemas computacionales"},
+      {p:"¿Qué es un algoritmo?", o:["Un error","Un conjunto de pasos definidos para resolver un problema","Una aplicación de software","Un tipo de computadora"], c:"Un conjunto de pasos definidos para resolver un problema"},
+      {p:"¿Qué es un programador?", o:["Un técnico en hardware","Un profesional que desarrolla y mantiene código","Un sistema operativo","Un compilador"], c:"Un profesional que desarrolla y mantiene código"},
+      {p:"¿Qué es un lenguaje de programación?", o:["Un idioma natural","Un conjunto de reglas y símbolos para dar instrucciones a la computadora","Un dispositivo de entrada","Un sistema de almacenamiento"], c:"Un conjunto de reglas y símbolos para dar instrucciones a la computadora"},
+      {p:"¿Qué es un compilador?", o:["Un gestor de bases de datos","Un programa que traduce código fuente a código máquina","Un antivirus","Un editor de texto"], c:"Un programa que traduce código fuente a código máquina"},
+      {p:"¿Qué es la inteligencia artificial?", o:["Un lenguaje de programación","Una rama que crea sistemas capaces de tareas inteligentes","Solo robots","Una red social"], c:"Una rama que crea sistemas capaces de tareas inteligentes"},
+      {p:"¿Qué es la robótica?", o:["Estudio de videojuegos","Diseño, construcción y uso de robots","Un lenguaje de programación","Un sistema operativo"], c:"Diseño, construcción y uso de robots"},
+      {p:"¿Qué es un sistema operativo?", o:["Un programa de mensajería","El software que gestiona hardware y aplicaciones de la computadora","Una base de datos","Una impresora"], c:"El software que gestiona hardware y aplicaciones de la computadora"},
+      {p:"¿Qué es un bug?", o:["Un insecto","Un error o falla en un programa de software","Un tipo de compilador","Un servicio en la nube"], c:"Un error o falla en un programa de software"},
+      {p:"¿Qué es una base de datos?", o:["Una colección estructurada de datos","Una memoria RAM","Un monitor","Un teclado"], c:"Una colección estructurada de datos"},
+      {p:"¿Qué es la programación orientada a objetos (POO)?", o:["Un estilo de UI","Un modelo que utiliza objetos que combinan datos y funciones","Un antivirus","Un protocolo de red"], c:"Un modelo que utiliza objetos que combinan datos y funciones"},
+      {p:"¿Qué es la ciberseguridad?", o:["Protección de sistemas, redes y datos frente a ataques digitales","Un lenguaje de programación","Una base de datos","Un navegador"], c:"Protección de sistemas, redes y datos frente a ataques digitales"},
+      {p:"¿Qué es la realidad aumentada?", o:["Un sistema operativo","Una tecnología que superpone información digital en el mundo real","Un tipo de red","Un compilador"], c:"Una tecnología que superpone información digital en el mundo real"},
+      {p:"¿Qué es un software?", o:["Un componente físico","Un conjunto de programas o instrucciones para realizar tareas","Un disco duro","Un puerto USB"], c:"Un conjunto de programas o instrucciones para realizar tareas"},
+      {p:"¿Qué es el hardware?", o:["El software del sistema","Los componentes físicos de un sistema informático","Una aplicación web","Un algoritmo"], c:"Los componentes físicos de un sistema informático"},
+      {p:"¿Qué es el aprendizaje automático (machine learning)?", o:["Un videojuego","Un subcampo de la IA donde las máquinas aprenden de datos","Un tipo de teclado","Una impresora"], c:"Un subcampo de la IA donde las máquinas aprenden de datos"},
+      {p:"¿Qué es la nube (cloud)?", o:["Un dispositivo externo","La entrega de servicios informáticos por Internet","Un lenguaje de programación","Un sistema de archivos local"], c:"La entrega de servicios informáticos por Internet"},
+      {p:"¿Qué es un servidor?", o:["Un PC que brinda servicios a otras máquinas en una red","Un teclado","Un programa antivirus","Una unidad de disco"], c:"Un PC que brinda servicios a otras máquinas en una red"},
+      {p:"¿Qué es una red?", o:["Un conjunto de dispositivos interconectados que comparten recursos","Una aplicación móvil","Un compilador","Un software de edición"], c:"Un conjunto de dispositivos interconectados que comparten recursos"}
+    ];
+
+    /* --- Estado del juego --- */
+    let puntos = 0;
+    let preguntasRestantes = [...preguntasOrigen]; // banco rotativo
+    let timer = null;
+    let tiempo = 10;
+    let preguntaActiva = null;
+    let botonActivo = null;
+
+    /* --- Elementos DOM --- */
+    const tablero = document.getElementById('tablero');
+    const preguntaDiv = document.getElementById('pregunta');
+    const opcionesDiv = document.getElementById('opciones');
+    const contadorDiv = document.getElementById('contador');
+    const puntosSpan = document.getElementById('puntos');
+    const mensajeDiv = document.getElementById('mensaje');
+    const robotDiv = document.getElementById('robot');
+
+    const sonidoCorrecto = document.getElementById('sonido-correcto');
+    const sonidoIncorrecto = document.getElementById('sonido-incorrecto');
+    const sonidoTic = document.getElementById('sonido-tic');
+    const sonidoFracaso = document.getElementById('sonido-fracaso');
+    const sonidoVictoria = document.getElementById('sonido-victoria');
+
+    /* --- Crear botones 1..20 --- */
+    for (let i = 1; i <= 20; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'num-btn';
+      btn.id = 'btn-' + i;
+      btn.textContent = i;
+      btn.onclick = () => elegirPregunta(btn);
+      tablero.appendChild(btn);
+    }
+
+    /* --- Elegir y mostrar pregunta aleatoria (rotativa) --- */
+    function elegirPregunta(boton) {
+      // Si no hay preguntas disponibles, recargar banco
+      if (preguntasRestantes.length === 0) preguntasRestantes = [...preguntasOrigen];
+
+      // Selección aleatoria y remoción para evitar repetir en la misma partida
+      const idx = Math.floor(Math.random() * preguntasRestantes.length);
+      const pregunta = preguntasRestantes.splice(idx, 1)[0];
+
+      preguntaActiva = pregunta;
+      botonActivo = boton;
+
+      // Mostrar pregunta y opciones (4 opciones)
+      preguntaDiv.textContent = pregunta.p;
+      opcionesDiv.innerHTML = '';
+      pregunta.o.forEach(op => {
+        const b = document.createElement('button');
+        b.className = 'opcion';
+        b.textContent = op;
+        b.onclick = () => verificarRespuesta(op, pregunta.c, boton);
+        opcionesDiv.appendChild(b);
+      });
+
+      // Iniciar contador
+      iniciarConteo();
+    }
+
+    /* --- Contador de 10 segundos con sonido tic que se detiene cuando respondes --- */
+    function iniciarConteo() {
+      detenerConteo(); // seguridad
+      tiempo = 10;
+      contadorDiv.textContent = `⏳ Tiempo: ${tiempo}s`;
+
+      // reproducir tic en loop
+      sonidoTic.loop = true;
+      // Chrome requiere interacción previa (ya hubo clic en boton), así que debería reproducir
+      sonidoTic.play().catch(()=>{/* si no reproduce, ignorar */});
+
+      timer = setInterval(() => {
+        tiempo--;
+        contadorDiv.textContent = `⏳ Tiempo: ${tiempo}s`;
+
+        if (tiempo <= 0) {
+          detenerConteo();
+          // sonido de fracaso + reinicio
+          fracasar("⏰ ¡Se acabó el tiempo!");
+        }
+      }, 1000);
+    }
+
+    function detenerConteo() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      try {
+        sonidoTic.pause();
+        sonidoTic.currentTime = 0;
+      } catch(e){}
+      contadorDiv.textContent = '';
+    }
+
+    /* --- Verificar la respuesta seleccionada --- */
+    function verificarRespuesta(opcion, correcta, boton) {
+      // detener tic y contador
+      detenerConteo();
+
+      if (opcion === correcta) {
+        // respuesta correcta
+        puntos += 10;
+        puntosSpan.textContent = puntos;
+        mensajeDiv.textContent = "✅ ¡Correcto!";
+        sonidoCorrecto.play().catch(()=>{});
+        // apagar el botón que elegiste
+        boton.classList.add('apagado');
+        boton.disabled = true;
+
+        // ganar?
+        if (puntos >= 100) {
+          // victoria: robot, sonido y voz
+          setTimeout(winGame, 600); // pequeña pausa para UX
+        }
+      } else {
+        // respuesta incorrecta -> fracaso
+        fracasar("❌ Incorrecto. Has fracasado.");
+      }
+    }
+
+    /* --- Fracaso: sonido, mensaje y reinicio (completo) --- */
+    function fracasar(texto) {
+      mensajeDiv.textContent = texto;
+      try { sonidoFracaso.play(); } catch(e){}
+      // dejar mensaje un momento y reiniciar todo
+      setTimeout(() => reiniciarJuego("💀 ¡Fracasaste! Reiniciando..."), 1300);
+    }
+
+    /* --- Victoria: mostrar robot, reproducir aplauso y hablar "¡Ganaste!" --- */
+    function winGame() {
+      detenerConteo();
+      mensajeDiv.textContent = "🎉 ¡Ganaste!";
+      robotDiv.style.display = 'block';
+
+      // sonido de victoria (aplausos)
+      try { sonidoVictoria.play(); } catch(e){}
+
+      // voz usando Web Speech API (navegador)
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance("¡Ganaste, felicidades!");
+        utter.lang = 'es-ES';
+        utter.rate = 1;
+        utter.pitch = 1;
+        window.speechSynthesis.cancel(); // cancelar cualquier voz previa
+        window.speechSynthesis.speak(utter);
+      }
+
+      // deshabilitar todos los botones del tablero (estado final)
+      document.querySelectorAll('#tablero .num-btn').forEach(b => b.disabled = true);
+      // también limpiar opciones (ya no se puede responder)
+      opcionesDiv.innerHTML = '';
+    }
+
+    /* --- Reiniciar juego: volver a estado inicial --- */
+    function reiniciarJuego(alertText = "") {
+      // detener cualquier audio/voz
+      detenerConteo();
+      try { sonidoCorrecto.pause(); sonidoCorrecto.currentTime = 0; } catch(e){}
+      try { sonidoIncorrecto.pause(); sonidoIncorrecto.currentTime = 0; } catch(e){}
+      try { sonidoFracaso.pause(); sonidoFracaso.currentTime = 0; } catch(e){}
+      try { sonidoVictoria.pause(); sonidoVictoria.currentTime = 0; } catch(e){}
+      try { window.speechSynthesis.cancel(); } catch(e){}
+
+      if (alertText) {
+        // Muestra un alert y sigue con reinicio
+        alert(alertText);
+      }
+
+      puntos = 0;
+      puntosSpan.textContent = puntos;
+      preguntasRestantes = [...preguntasOrigen]; // recargar banco
+      preguntaDiv.textContent = '';
+      opcionesDiv.innerHTML = '';
+      contadorDiv.textContent = '';
+      mensajeDiv.textContent = '';
+      robotDiv.style.display = 'none';
+
+      // reactivar botones y quitar clase apagado
+      document.querySelectorAll('#tablero .num-btn').forEach(b => {
+        b.disabled = false;
+        b.classList.remove('apagado');
+      });
+    }
+
+    /* --- (Opcional) prevenir doble click rápido --- */
+    // no es estrictamente necesario pero evita problemas si pulsas varias veces
+    document.addEventListener('click', e => {
+      if (e.target && e.target.classList.contains('opcion')) {
+        // opcional: desactivar temporalmente las opciones (evita doble-click)
+        document.querySelectorAll('.opcion').forEach(x => x.disabled = true);
+        setTimeout(()=>document.querySelectorAll('.opcion').forEach(x => x.disabled = false), 600);
+      }
+    });
+
+    /* --- Inicialización: (ya creado tablero más arriba) --- */
+    // ya todo se arma dinámicamente en creación de botones
+  </script>
+</body>
+</html>
